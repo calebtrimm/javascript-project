@@ -26,9 +26,46 @@ const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
 let gameStep = 0;
 let board = []; // The board holds all the game entities. It is a 2D array.
 
-const items = []; // Array of item objects. These will be used to clone new items with the appropriate properties.
+const items = [
+  {
+    name: 'potion', 
+    value: 5, 
+    rarity: 0, 
+    use: function() {
+    if ((player.hp + 25) > (player.level * 100)) {
+      player.hp = player.level * 100;
+    } else {
+      player.hp += 25;
+    }
+  }},
 
-const player = {}; // The player object
+  {
+    name: 'bomb', 
+    value: 5, 
+    rarity: 0, 
+    use: function() {
+
+  }},  
+]; // Array of item objects. These will be used to clone new items with the appropriate properties.
+
+const player = {
+  name: '',
+  level: 1,
+  items: [],
+  skills: [],
+  attack: 10,
+  speed: 2000,
+  hp: 100,
+  gold: 0,
+  exp: 0,
+  type: 'player',
+  position: {},
+  levelUp: function() {
+    this.level += 1;
+    this.hp = player.level * 100;
+    this.speed = 2000 / player.level;
+    this.attack =+ 10;}, // Level up happens when exp >= [player level * 10])
+}; 
 
 // Utility function to print messages with different colors. Usage: print('hello', 'red');
 function print(arg, color) {
@@ -38,10 +75,14 @@ function print(arg, color) {
 
 // Prints a blue string with the indicated number of dashes on each side of the string. Usage: printSectionTitle('hi', 1) // -hi-
 // We set a default value for the count to be 20 (i.e. 20 dashes '-')
-function printSectionTitle(title, count = 20) {}
+function printSectionTitle(title, count = 20) {
+}
 
 // Sets the name property for the player and prints a message to notice the user of the change
-function setName(name) {}
+function setName(name) {
+  let playerName = [];
+  playerName.push(name.split(''));
+}
 
 // Returns a new object with the same keys and values as the input object
 function clone(entity) {}
