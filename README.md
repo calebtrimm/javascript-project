@@ -8,6 +8,88 @@ The adventurer can move in 4 directions (Up, Down, Left, Right) and interact wit
 
 Be sure to check the images for more information on the different features of the game
 
+# Grading rubrics
+
+Each of the following grading rubric will be evaluated (PASS or FAIL)
+
+Setup player is functional
+
+- printSectionTitle
+- createPlayer
+  - Creates a player object with the specified properties (name, level, items)
+  - Creates an array of cloned items for the items property
+    - items array has item objects with the appropriate properties
+    - clone
+    - assertEqual (this is a helper function to check if clone works as intended, not necessary for the game itself)
+    - cloneArray
+
+Setup board is functional
+
+- initBoard
+  - createBoard
+    - Creates the board with specified number of rows and columns
+    - First and last row & first and last column are wall entities
+    - The rest is grass entities
+  - placePlayer
+    - Places player object in the middle of the board
+- printBoard
+- create functions
+  - Creates the entities with correct properties (based on README) and values specified in parameters
+    - Items must be cloned (so as to not modify the original items array)
+  - createMonster
+  - createItem
+  - createTradesman
+  - createDungeon
+- updateBoard
+  - Set the board entity at the entity position
+
+Game core features
+
+- move
+  - Player can move in the 4 directions specified
+  - Player cannot move past walls
+  - When player moves, the entity that was there (e.g. grass) shows up again
+  - If player encounters an entity (monster, item, tradesman, dungeon) a message appears to print which entity was encountered (e.g. 'Found the tradesman!')
+- Player can pickup an item
+  - When an item is picked up, a grass entity replaces it
+- Player can win the game
+  - Move to unlocked dungeon with princess triggers printSectionTitle with 'GAME OVER' message
+
+Game battle feature
+
+- Player can fight monsters
+  - Encountering a monster triggers 2 setInterval
+    - Player attack: setInterval using the speed property of the player as the interval time, damages the enemy by the value of the player's attack property
+    - Monster attack: setInterval using the speed property of the monster as the interval time, damages the player by the value of the monster's attack property
+  - Player or monster can die if hp reaches 0
+    - HP cannot go under 0
+    - triggers printSectionTitle with 'GAME OVER' message if player dies
+    - replace monster with grass entity if defeated
+  - Player gains exp points for defeating monsters
+    - Player can level up if enough exp is earned.
+  - Player can obtain monster items when defeated
+
+Game additional features
+
+- Player can buy items from tradesman
+  - Removes gold from player by item value
+  - Removes the item bought from tradesman items
+  - Adds item bought to player items property
+- Player can sell items to tradesman
+  - Adds gold to player
+  - Removes the item sold from player items
+  - Adds item sold to tradesman items property
+- Dungeon
+  - Player receives dungeon items and gold when there is no princess
+
+Game extra features
+
+- useItem
+  - Can use potions, bombs
+  - Can use key to unlock locked dungeon
+- useSkill
+  - Cooldown decreases every 100ms (e.g. 10000 cooldown, every 100ms cooldown value decreases by 100. At 0, skill is useable again)
+
 # Game rules
 
 ## Entities
@@ -89,7 +171,7 @@ Items have the following properties
 - name (string - Use the rarity name + type. Example for type 'potion' and rarity 0 -> Common potion)
 - type (string - type of item)
 - value (number)
-- rarity (number - refer to the RARITY_LIST variable)
+- rarity (number - index of the corresponding rarity in RARITY_LIST, e.g. 0 is 'Common')
 - use (function - expects a target as parameter to specify on which target to use the item)
 
 3 types of objects to implement:  
@@ -161,6 +243,8 @@ Dungeon has the following properties (parentheses has type and initial value)
 - gold (number)
 - position (object - specified in parameters)
 - type (string - 'dungeon')
+
+If a dungeon has no princess, player receives items and gold in that dungeon
 
 ### Battle rules
 
