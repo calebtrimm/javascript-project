@@ -29,7 +29,7 @@ A position object has 2 properties:
 
 - row: a number representing the index of the board row
 - column: a number representing the index of the board column
-
+`
 ### Player
 
 The player has the following properties (parentheses has type)
