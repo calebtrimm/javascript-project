@@ -67,6 +67,7 @@ const items = [
 
 let player = {
   name: '',
+  sprite: 'P',
   level: 1,
   items: [],
   skills: [
@@ -144,7 +145,13 @@ function clone(entity) {
 }
 
 // returns true or false to indicate whether 2 different objects have the same keys and values
-function assertEqual(obj1, obj2) {}
+function assertEqual(obj1, obj2) {
+    let obj1Position = obj1.filter(objPosition => obj1.position);
+    let obj2Position = obj2.filter(objPosition => obj2.position);
+    if (obj1Position === obj2Position)
+      return true;
+      else false;
+}
 
 // Clones an array of objects
 // returns a new array of cloned objects. Useful to clone an array of item objects
@@ -156,61 +163,76 @@ function cloneArray(objs) {
 // itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
-function useItem(itemName, target) {}
+function useItem(itemName, target) {
+
+}
 
 // Uses a player skill (note: skill is not consumable, it's useable infinitely besides the cooldown wait time)
 // skillName is a string. target is an entity (typically monster).
 // If target is not specified, skill shoud be used on the entity at the same position
-function useSkill(skillName, target) {}
+function useSkill(skillName, target) {
+
+}
 
 // Sets the board variable to a 2D array of rows and columns
 // First and last rows are walls
 // First and last columns are walls
 // All the other entities are grass entities
 function createBoard(rows, columns) {
-  for (let i = 0; i <= rows; i++){
+  for (let i = 0; i <= rows - 1; i++){
     let rowsArray = [];
     for (let j = 0; j < columns; j++){
-        rowsArray.push('#');
+      wall = {};
+      wall.type = 'wall';
+      wall.sprite = '#';
+      wall.position = {row: i, column: j};
+      rowsArray.push(wall);
+      grass = {};
+      grass.type = 'grass';
+      grass.sprite = '.';
+      grass.position = {row: i, column: j};
     }
-    if (i !== 0 && i !== rows) {
-      rowsArray.fill('.', 1, (columns - 1));
+    if (i !== 0 && i !== rows - 1) {
+      rowsArray.fill(grass, 1, (columns - 1));
     }
-    // rowsArray = rowsArray.join(' ');
     board.push(rowsArray);
   }
-  // board = board.join('\n');
-  return board;
+  console.log(board);
 }
-
-    // if (i === Math.floor(rows/2)) {
-    //     let centerPlayer = rowsArray.splice((Math.floor(columns/2)), 1, 'P');
-    // }
   
 
 // Updates the board by setting the entity at the entity position
 // An entity has a position property, each board cell is an object with an entity property holding a reference to the entity at that position
 // When a player is on a board cell, the board cell keeps the current entity property (e.g. monster entity at that position) and may need to have an additional property to know the player is there too.
-function updateBoard(entity) {}
+function updateBoard(entity) {
+  board[entity.position.row].splice(entity.position.column, 1, entity);
+}
 
 // Sets the position property of the player object to be in the middle of the board
 // You may need to use Math methods such as Math.floor()
-function placePlayer() {
-  Object.keys(player);
-  player.position = rowsArray.splice((Math.floor(columns/2)), 1, 'P')
+function placePlayer(rows, columns) {
+  let rowMiddle = (Math.floor(rows/2));
+  let columnMiddle = (Math.floor(columns/2));
+  player.position = {row: rowMiddle, column: columnMiddle};
+  board[Math.floor(rows/2)].splice((columns/2), 1, player);
 }
 
 // Creates the board and places player
 function initBoard(rows, columns) {
-  createBoard(rows, columns)
+  createBoard(rows, columns);
   console.log("Creating board and placing player...");
-  printBoard();
+  placePlayer(rows, columns);
 }
 
 // Prints the board
 function printBoard() {
-  // board = board.join('\n');
-  console.log(board);
+  for (let i = 0; i < board.length; i++){
+    let row = '';
+    for (let j = 0; j < board[i].length; j++){
+      row += board[i][j].sprite;
+    }
+    print(row);
+  }
 }
 
 // Sets the player variable to a player object based on the specifications of the README file
@@ -220,7 +242,7 @@ function createPlayer(name, level = 1, items = []) {
   let clonePlayer = {};
   Object.keys(player);
   clonePlayer = {
-  name : player.name,
+  name : name,
   level : level,
   items : clone(items),
   skills : player.skills,
@@ -243,8 +265,10 @@ function createPlayer(name, level = 1, items = []) {
 // The items property will need to be a new array of cloned item objects
 // The entity properties (e.g. hp, attack, speed) must respect the rules defined in the README
 function createMonster(level, items, position) {
+  console.log("Creating monster...");
   let monster = {
   name: monsterNames[Math.floor(Math.random() * monsterNames.length)],
+  sprite: 'M',
   level: level,
   hp: level * 100,
   attack: level * 10,
@@ -259,6 +283,7 @@ function createMonster(level, items, position) {
     return player.exp += player.level * 10;
   } 
   };
+  return monster;
 }
 
 // Creates a tradesman object with the specified items and position. hp is Infinity
@@ -266,14 +291,15 @@ function createMonster(level, items, position) {
 function createTradesman(items, position) {
   let tradesman = {
     name: 'Walmart',
+    sprite: 'T',
     hp: Infinity,
     items: items,
     position: position,
-    type: tradesman,
+    type: 'tradesman',
     getMaxHP: function() {
       return this.hp;
-    },
-  }
+    },}
+    return tradesman;
 }
 
 // Creates an item entity by cloning one of the item objects and adding the position and type properties.
@@ -284,11 +310,69 @@ function createItem(item, position) {
 
 // Creates a dungeon entity at the specified position
 // The other parameters are optional. You can have unlocked dungeons with no princess for loot, or just empty ones that use up a key for nothing.
-function createDungeon(position, isLocked = true, hasPrincess = true, items = [], gold = 0) {}
+function createDungeon(position, isLocked = true, hasPrincess = true, items = [], gold = 0) {
 
+}
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
-function move(direction) {}
+function move(direction) {
+  if (direction === 'U') {
+    if (player.position.row > 1){
+      board[player.position.row].splice(player.position.column, 1, grass);
+      player.position.row -= 1;
+      updateBoard(player);
+      printBoard();
+    }
+    else {
+      console.log("*THUMP* Ow! Watch where you're going!");
+      printBoard();
+    }
+  }
+  if (direction === 'D') {
+    if (player.position.row > board.length - 2){
+      board[player.position.row].splice(player.position.column, 1, grass);
+      player.position.row += 1;
+      updateBoard(player);
+      printBoard();
+    }
+    else {
+      console.log("*THUMP* Ow... My face.");
+      printBoard();
+    }
+  }
+  if (direction === 'L') {
+    if (player.position.column > board[0].length - 2){
+      board[player.position.row].splice(player.position.column, 1, grass);
+      player.position.column -= 1;
+      updateBoard(player);
+      printBoard();
+    }
+    else {
+      console.log("*THUMP* Ow... I can't walk through this.");
+      printBoard();
+    }
+  }
+  if (direction === 'R') {
+    if (player.position.column > 1) {
+      board[player.position.row].splice(player.position.column, 1, grass);
+      player.position.column += 1;
+      updateBoard(player);
+      printBoard();
+    }
+    else {
+      console.log("*THUMP* Ow... I can't walk through this.");
+      printBoard();
+    }
+  }
+}
+
+
+
+
+
+
+
+
 
 function setupPlayer() {
   printSectionTitle('SETUP PLAYER');
