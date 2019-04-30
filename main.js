@@ -79,7 +79,7 @@ const items = [
     rarity: 3, 
     use: function() {
       if (board[player.position.row][player.position.column].sprite === 'D'){
-      dungeon.isLocked = false;
+        board[player.position.row][player.position.column].isLocked = false;
     }
       else {
       print('Need to use this on a dungeon door...', 'red');
@@ -223,7 +223,8 @@ function assertEqual(obj1, obj2) {
 // Clones an array of objects
 // returns a new array of cloned objects. Useful to clone an array of item objects
 function cloneArray(objs) {
-  let cloneObj = objs;
+  let cloneObj = [];
+  cloneObj = cloneObj.concat(objs);
   return cloneObj;
 }
 
@@ -268,11 +269,11 @@ function useItem(itemName, target) {
     if(player.items.some(hasKey)){
       let itemIdx = player.items.findIndex(hasKey);
       player.items[itemIdx].use();
-      if (dungeon.isLocked === false){
+      if (board[player.position.row][player.position.column].isLocked === false){
         player.items.splice(items[2], 1);
       print('Unlocking dungeon...', 'red');
       print('The dungeon is unlocked!' );
-      if (dungeon.hasPrincess === true){
+      if (board[player.position.row][player.position.column].hasPrincess === true){
         print('You have freed the princess! Congratulations!');
         gameOver();
         return;
@@ -398,7 +399,7 @@ function printBoard() {
 function createPlayer(name, level = 1, items = []) {
   player.name = name,
   player.level = level,
-  player.items = [cloneArray(items)],
+  player.items = cloneArray(items),
   player.speed = 3000 / player.level,
   console.log('Player name set to ' + name  );
 }
@@ -415,7 +416,7 @@ function createMonster(level, items, position) {
   hp: level * 100,
   attack: level * 10,
   speed: 6000 / level,
-  items: items,
+  items: cloneArray(items),
   position: position,
   type: 'monster',
   getmaxHP: function() {
@@ -619,12 +620,12 @@ function move(direction) {
           print('You found the dungeon!');
           print('...and it\'s unlocked!');
           print('No princess here... but hey, you found treasure! That\'s almost as good!');
-          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
-          print(dungeon.items);
-          player.items = player.items.concat(dungeon.items);
-          dungeon.items = [];
-          player.gold += dungeon.gold;
-          dungeon.gold = 0;
+          print('You\'ve received ' + board[player.position.row][player.position.column].items.length + ' item(s) and ' + board[player.position.row][player.position.column].gold + ' gold.');
+          print(board[player.position.row][player.position.column].items);
+          player.items = player.items.concat(board[player.position.row][player.position.column].items);
+          board[player.position.row][player.position.column].items = [];
+          player.gold += board[player.position.row][player.position.column].gold;
+          board[player.position.row][player.position.column].gold = 0;
           print('You now have ' + player.gold + ' gold.');
         }
       }
@@ -675,12 +676,12 @@ function move(direction) {
           print('You found the dungeon!');
           print('...and it\'s unlocked!');
           print('No princess here... but hey, you found treasure! That\'s almost as good!');
-          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
-          print(dungeon.items);
-          player.items = player.items.concat(dungeon.items);
-          dungeon.items = [];
-          player.gold += dungeon.gold;
-          dungeon.gold = 0;
+          print('You\'ve received ' + board[player.position.row][player.position.column].items.length + ' item(s) and ' + board[player.position.row][player.position.column].gold + ' gold.');
+          print(board[player.position.row][player.position.column].items);
+          player.items = player.items.concat(board[player.position.row][player.position.column].items);
+          board[player.position.row][player.position.column].items = [];
+          player.gold += board[player.position.row][player.position.column].gold;
+          board[player.position.row][player.position.column].gold = 0;
           print('You now have ' + player.gold + ' gold.');
         }
       }
@@ -730,12 +731,12 @@ function move(direction) {
           print('You found the dungeon!');
           print('...and it\'s unlocked!');
           print('No princess here... but hey, you found treasure! That\'s almost as good!');
-          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
-          print(dungeon.items);
-          player.items = player.items.concat(dungeon.items);
-          dungeon.items = [];
-          player.gold += dungeon.gold;
-          dungeon.gold = 0;
+          print('You\'ve received ' + board[player.position.row][player.position.column].items.length + ' item(s) and ' + board[player.position.row][player.position.column].gold + ' gold.');
+          print(board[player.position.row][player.position.column].items);
+          player.items = player.items.concat(board[player.position.row][player.position.column].items);
+          board[player.position.row][player.position.column].items = [];
+          player.gold += board[player.position.row][player.position.column].gold;
+          board[player.position.row][player.position.column].gold = 0;
           print('You now have ' + player.gold + ' gold.');
         }
       }
@@ -785,12 +786,12 @@ function move(direction) {
           print('You found the dungeon!');
           print('...and it\'s unlocked!');
           print('No princess here... but hey, you found treasure! That\'s almost as good!');
-          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
-          print(dungeon.items);
-          player.items = player.items.concat(dungeon.items);
-          dungeon.items = [];
-          player.gold += dungeon.gold;
-          dungeon.gold = 0;
+          print('You\'ve received ' + board[player.position.row][player.position.column].items.length + ' item(s) and ' + board[player.position.row][player.position.column].gold + ' gold.');
+          print(board[player.position.row][player.position.column].items);
+          player.items = player.items.concat(board[player.position.row][player.position.column].items);
+          board[player.position.row][player.position.column].items = [];
+          player.gold += board[player.position.row][player.position.column].gold;
+          board[player.position.row][player.position.column].gold = 0;
           print('You now have ' + player.gold + ' gold.');
         }
       }
@@ -804,18 +805,19 @@ function move(direction) {
 
 
 
-function skipSetup() {
-initBoard(7,15);
-createPlayer('Boy', 1, items[0]);
-let monster1 = createMonster(1, items[0], {row: 2, column: 7});
-updateBoard(monster1);
-let monster2 = createMonster(1, [items[0], items[1]], {row:2, column: 6});
-updateBoard(monster2);
-updateBoard(createTradesman(items, {row: 4, column: 7} ));
-updateBoard(createItem(items[0], {row:2, column: 2}));
-updateBoard(createDungeon({row: 2, column: 3}, isLocked = true, hasPrincess = true));
-printBoard();
-}
+//QUICKSETUP
+
+// initBoard(7,15);
+// createPlayer('Boy', 1, items[0]);
+// let monster1 = createMonster(1, items[0], {row: 2, column: 7});
+// updateBoard(monster1);
+// let monster2 = createMonster(1, [items[0], items[1]], {row:2, column: 6});
+// updateBoard(monster2);
+// updateBoard(createTradesman(items, {row: 4, column: 7} ));
+// updateBoard(createItem(items[0], {row:2, column: 2}));
+// updateBoard(createDungeon({row: 2, column: 3}, isLocked = true, hasPrincess = true));
+// printBoard();
+// }
 
 
 
