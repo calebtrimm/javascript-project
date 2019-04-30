@@ -25,44 +25,67 @@ const RARITY_LIST = ['Common', 'Unusual', 'Rare', 'Epic'];
 const GAME_STEPS = ['SETUP_PLAYER', 'SETUP_BOARD', 'GAME_START'];
 let gameStep = 0; // The current game step, value is index of the GAME_STEPS array.
 let board = []; // The board holds all the game entities. It is a 2D array.
+let enemyAttackInt;
+let playerAttackInt;
+let currentObj = [];
+let tradesman = {};
+let confuseCooldownInt;
+let stealCooldownInt;
+
+let grass = {
+  type: 'grass',
+  sprite: '.',
+}
+
+let wall = {
+  type: 'wall',
+  sprite: '#',
+}
 
 const items = [
   {
-    name: '',
+    name: 'Common potion',
     type: 'potion',
     value: 5, 
     rarity: 0, 
     use: function(target) {
-    if ((target.hp + 25) > (target.level * 100)) {
-      target.hp = target.level * 100;
-    } else {
-      target.hp += 25;
-    }
-    if (this.rarity === 3) {
-      getMaxHP();
-    }
-  }},
-
+      let maxHP = target.getMaxHP();
+      if(target.hp < maxHP){
+        target.hp = Math.min(maxHP, target.hp + 25);
+      }
+        // if (this.rarity === 3) {
+        //   target.hp = target.getMaxHP();
+        //   return 25;
+        // }
+      }
+    },
   {
-    name: '',
+    name: 'Common bomb',
     type: 'bomb', 
     value: 7, 
     rarity: 0, 
     use: function(target) {
+      let minHP = 0;
       if (this.rarity === 3) {
         target.hp *= 0.1;
       } else {
-        target.hp -= 50;
+        target.hp = Math.max(minHP, target.hp - 50);
       }
   }},
   {
-    name: '',
+    name: 'Epic key',
     type: 'key', 
     value: 150, 
     rarity: 3, 
-    use: function(door) {
-      unlock(door);
-  }},    
+    use: function() {
+      if (board[player.position.row][player.position.column].sprite === 'D'){
+      dungeon.isLocked = false;
+    }
+      else {
+      print('Need to use this on a dungeon door...', 'red');
+      }
+    },
+  }    
 ]; // Array of item objects. These will be used to clone new items with the appropriate properties.
 
 let player = {
@@ -75,18 +98,60 @@ let player = {
       name: 'confuse',
       requiredLevel: 1,
       cooldown: 10000,
+      disabled: false,
       use: function(target) {
-        target.hp - (player.level * 25);
-      }},
+        if (board[player.position.row][player.position.column] === board[target.position.row][target.position.column]){
+          if (this.disabled !== true){
+            let nameArr = target.name.split('');
+            let reverseArr = nameArr.reverse();
+            let joinArr = reverseArr.join('');
+            print('Confusing ' + target.name);
+            print('...' + joinArr + ', target is confused and hurts itself in the process', 'red');
+            print(joinArr + ' hit! -' + (player.level*25) + ' hp', 'purple');
+            target.hp = Math.max(0, target.hp - (player.level * 25));
+            print('HP remaining: ' + target.hp, 'purple');
+            this.disabled = true;
+            }
+          else {
+            print('Skill is on cooldown! ');
+          }
+        } 
+        else{
+          print('You can\'t use this from far away!')
+        }
+      }
+    },
       {
         name: 'steal',
         requiredLevel: 3,
         cooldown: 25000,
+        disabled: false,
         use: function(target) {
-          let stolenItems = target.items.filter(rarity <= 1);
-          player.items += stolenItems;  
-          target.items -= stolenItems;
-        }},
+          if (player.level < this.requiredLevel){
+            return print('You need to be level 3 to use this skill.');
+          }
+          if (this.disabled !== true) {
+            print('*YOINK* You use steal!');
+            let commonItems = [];
+            commonItems = commonItems.concat(target.items);
+            let stolenItems = [];
+            for (let i = 0; i < commonItems.length; i++){
+              if (commonItems[i].rarity <= 1){
+                stolenItems = stolenItems.concat(commonItems[i]);
+                player.items.push(commonItems[i]);
+                target.items.splice(commonItems[i], 1);
+                this.disabled = true;
+              }
+            }
+              print('You stole the following items: ');
+              print(stolenItems);
+          }
+          else {
+            print('Skill is on cooldown!');
+          }
+        }
+
+      },
   ],
   attack: 10,
   speed: 3000,
@@ -96,7 +161,7 @@ let player = {
   type: 'player',
   position: {},
   getMaxHP: function() {
-    this.hp = this.level * 100;
+    return this.level * 100;
   },
   levelUp: function() {
     this.exp -= (this.level * 20);
@@ -104,12 +169,13 @@ let player = {
     this.hp = this.level * 100;
     this.speed = 3000 / this.level;
     this.attack =+ 10;
-    console.log("Level up! You are now level" + this.level + " !")
+    console.log('Level up! You are now level ' + this.level + '!')
   }, // Level up happens when exp >= [player level * 10])
   getExpToLevel: function (){
-   return this.level * 20; 
+   return (this.level * 20) - (player.exp); 
   }
 }; 
+
 
 // Utility function to print messages with different colors. Usage: print('hello', 'red');
 function print(arg, color) {
@@ -132,46 +198,137 @@ function printSectionTitle(title, count = 20) {
 
 // Returns a new object with the same keys and values as the input object
 function clone(entity) {
-  let cloneObj = {};
   Object.keys(entity);
-  cloneObj = {
-    name: RARITY_LIST[entity.rarity] + ' ' + entity.type,
-    type: entity.type,
-    value: entity.value,
-    rarity: entity.rarity, 
-    use: entity.use,
+  let cloneEntity = {
+  name: entity.name,
+  sprite: entity.sprite,
+  level: entity.level,
+  hp: entity.hp,
+  attack: entity.attack,
+  speed: entity.speed,
+  items: entity.items,
+  position: entity.position,
+  type: entity.type,
+  getmaxHP: entity.getmaxHP,
+  getExp: entity.getExp,
   };
-  return cloneObj;
+  return cloneEntity;
 }
 
 // returns true or false to indicate whether 2 different objects have the same keys and values
 function assertEqual(obj1, obj2) {
-    let obj1Position = obj1.filter(objPosition => obj1.position);
-    let obj2Position = obj2.filter(objPosition => obj2.position);
-    if (obj1Position === obj2Position)
-      return true;
-      else false;
+   return obj1 === obj2 ? true : false;
 }
 
 // Clones an array of objects
 // returns a new array of cloned objects. Useful to clone an array of item objects
 function cloneArray(objs) {
-
+  let cloneObj = objs;
+  return cloneObj;
 }
+
 
 // Uses a player item (note: this consumes the item, need to remove it after use)
 // itemName is a string, target is an entity (i.e. monster, tradesman, player, dungeon)
 // If target is not specified, item should be used on player for type 'potion'. Else, item should be used on the entity at the same position
 // First item of matching type is used
 function useItem(itemName, target) {
+  function hasPotion(item) {
+      return item.type === 'potion';
+    }
+  function hasBomb(item){
+      return item.type === 'bomb';
+    } 
+  function hasKey(item){  
+      return item.type === 'key';
+    }
 
+  if (itemName === 'Common potion'){
+    if(player.items.some(hasPotion)){
+      let itemIdx = player.items.findIndex(hasPotion);
+      player.items[itemIdx].use(target);
+      print('Used potion! +25hp (Total HP: ' + target.hp + ')', 'green');
+      player.items.splice(items[0], 1);
+    } else print('You don\'t have any potions!');
+  }
+  if (itemName === 'Common bomb'){
+    if(player.items.some(hasBomb)){
+      let itemIdx = player.items.findIndex(hasBomb);
+      player.items[itemIdx].use(target);
+      print('You used a bomb!', 'gold');
+      print(target.name + ' hit! -50hp', 'purple');
+      if (target.hp === 0) {
+        print('It\'s not about killing, it\'s about sending a message.');
+      }
+      print(target.name + ' HP remaining: ' + target.hp, 'purple')
+      player.items.splice(items[1], 1);
+    } else print('You don\'t have any bombs!');
+  }
+  if (itemName === 'Epic key'){
+    if(player.items.some(hasKey)){
+      let itemIdx = player.items.findIndex(hasKey);
+      player.items[itemIdx].use();
+      if (dungeon.isLocked === false){
+        player.items.splice(items[2], 1);
+      print('Unlocking dungeon...', 'red');
+      print('The dungeon is unlocked!' );
+      if (dungeon.hasPrincess === true){
+        print('You have freed the princess! Congratulations!');
+        gameOver();
+        return;
+      }
+      }
+    }
+      else {
+        print('You don\'t have any keys!');
+      }
+    }
 }
 
 // Uses a player skill (note: skill is not consumable, it's useable infinitely besides the cooldown wait time)
 // skillName is a string. target is an entity (typically monster).
 // If target is not specified, skill shoud be used on the entity at the same position
 function useSkill(skillName, target) {
-
+  if (skillName === 'confuse'){
+    if (target === undefined){
+      target = board[player.position.row][player.position.column];
+      if (target.sprite !== 'M'){
+        print('Needs to be used on a monster'); 
+        return;
+      }
+      else {
+        setTimeout(() => player.skills[0].disabled = false, 10000);
+        player.skills[0].use(target);
+      }
+    } 
+    else {
+      player.skills[0].use(target);
+        setTimeout(() => player.skills[0].disabled = false, 10000);
+  }
+  }
+  if (skillName === 'steal'){
+    if (target === undefined){
+      target = board[player.position.row][player.position.column];
+      if (target.sprite === 'M' || target.sprite === 'T'){
+        player.skills[1].use(target);
+        setTimeout(() => player.skills[1].disabled = false, 25000);
+      }
+      else if (target.sprite === '.') {
+        print('You stole some grass. I see you like to live life on the edge. No level requirement');
+        player.items.push(grass);
+      }
+      else {
+        print('There\'s nothing to steal here.');
+      }
+    } 
+    else if (board[player.position.row][player.position.column] !== board[target.position.row][target.position.column]){
+      print('You\'re too far from your target.');
+    } 
+    else {
+      player.skills[1].use(target);
+      setTimeout(() => player.skills[1].disabled = false, 25000);
+    }
+  }
 }
 
 // Sets the board variable to a 2D array of rows and columns
@@ -182,18 +339,17 @@ function createBoard(rows, columns) {
   for (let i = 0; i <= rows - 1; i++){
     let rowsArray = [];
     for (let j = 0; j < columns; j++){
-      wall = {};
+      let wall = {};
       wall.type = 'wall';
       wall.sprite = '#';
       wall.position = {row: i, column: j};
-      rowsArray.push(wall);
-      grass = {};
+      let grass = {};
       grass.type = 'grass';
       grass.sprite = '.';
       grass.position = {row: i, column: j};
-    }
-    if (i !== 0 && i !== rows - 1) {
-      rowsArray.fill(grass, 1, (columns - 1));
+      if (i === 0 || i === rows - 1 || j === 0 || j === columns - 1) {
+      rowsArray.push(wall);        
+      } else rowsArray.push(grass);
     }
     board.push(rowsArray);
   }
@@ -205,7 +361,7 @@ function createBoard(rows, columns) {
 // An entity has a position property, each board cell is an object with an entity property holding a reference to the entity at that position
 // When a player is on a board cell, the board cell keeps the current entity property (e.g. monster entity at that position) and may need to have an additional property to know the player is there too.
 function updateBoard(entity) {
-  board[entity.position.row].splice(entity.position.column, 1, entity);
+  board[entity.position.row][entity.position.column] = entity;
 }
 
 // Sets the position property of the player object to be in the middle of the board
@@ -214,13 +370,12 @@ function placePlayer(rows, columns) {
   let rowMiddle = (Math.floor(rows/2));
   let columnMiddle = (Math.floor(columns/2));
   player.position = {row: rowMiddle, column: columnMiddle};
-  board[Math.floor(rows/2)].splice((columns/2), 1, player);
 }
 
 // Creates the board and places player
 function initBoard(rows, columns) {
   createBoard(rows, columns);
-  console.log("Creating board and placing player...");
+  console.log('Creating board and placing player...');
   placePlayer(rows, columns);
 }
 
@@ -229,7 +384,9 @@ function printBoard() {
   for (let i = 0; i < board.length; i++){
     let row = '';
     for (let j = 0; j < board[i].length; j++){
-      row += board[i][j].sprite;
+      if (player.position.row === i && player.position.column === j){
+        row += player.sprite;
+      } else row += board[i][j].sprite;
     }
     print(row);
   }
@@ -239,33 +396,18 @@ function printBoard() {
 // The items property will need to be a new array of cloned item objects
 // Prints a message showing player name and level (which will be 1 by default)
 function createPlayer(name, level = 1, items = []) {
-  let clonePlayer = {};
-  Object.keys(player);
-  clonePlayer = {
-  name : name,
-  level : level,
-  items : clone(items),
-  skills : player.skills,
-  attack : player.attack,
-  speed : player.speed,
-  hp : player.hp,
-  gold : player.gold,
-  exp : player.exp,
-  type :  player.type,
-  position : player.position,
-  getMaxHP : player.getMaxHP,
-  levelUp : player.levelUp,
-  getExpToLevel : player.getExpToLevel,
-  }
+  player.name = name,
+  player.level = level,
+  player.items = [cloneArray(items)],
+  player.speed = 3000 / player.level,
   console.log('Player name set to ' + name  );
-  return clonePlayer;
 }
 
 // Creates a monster object with a random name with the specified level, items and position
 // The items property will need to be a new array of cloned item objects
 // The entity properties (e.g. hp, attack, speed) must respect the rules defined in the README
 function createMonster(level, items, position) {
-  console.log("Creating monster...");
+  console.log('Creating monster...');
   let monster = {
   name: monsterNames[Math.floor(Math.random() * monsterNames.length)],
   sprite: 'M',
@@ -277,11 +419,13 @@ function createMonster(level, items, position) {
   position: position,
   type: 'monster',
   getmaxHP: function() {
-    return this.hp = this.level * 100;
+    return this.level * 100;
   },
   getExp: function() {
-    return player.exp += player.level * 10;
-  } 
+    let experience = this.level * 10;
+    player.exp += experience;
+    return experience;
+    } 
   };
   return monster;
 }
@@ -289,78 +433,370 @@ function createMonster(level, items, position) {
 // Creates a tradesman object with the specified items and position. hp is Infinity
 // The items property will need to be a new array of cloned item objects
 function createTradesman(items, position) {
-  let tradesman = {
+  tradesman = {
     name: 'Walmart',
     sprite: 'T',
     hp: Infinity,
-    items: items,
+    items: cloneArray(items),
     position: position,
     type: 'tradesman',
     getMaxHP: function() {
       return this.hp;
     },}
+    print('Building Walmart...')
     return tradesman;
 }
+
 
 // Creates an item entity by cloning one of the item objects and adding the position and type properties.
 // item is a reference to one of the items in the items variable. It needs to be cloned before being assigned the position and type properties.
 function createItem(item, position) {
+  Object.keys(item);
+  let newItem = {
+    name: RARITY_LIST[item.rarity] + ' ' + item.type,
+    type: item.type,
+    value: item.value, 
+    rarity: item.rarity,
+    position: position,
+    sprite: 'I',
+    use: item.use,
+  };
 
+  print('Tinkering with items...');
+  return newItem;
 }
 
 // Creates a dungeon entity at the specified position
 // The other parameters are optional. You can have unlocked dungeons with no princess for loot, or just empty ones that use up a key for nothing.
 function createDungeon(position, isLocked = true, hasPrincess = true, items = [], gold = 0) {
-
+  let dungeon = {
+    isLocked: isLocked,
+    sprite: 'D',
+    hasPrincess: hasPrincess,
+    items: items,
+    gold: gold,
+    position: position,
+    type: 'dungeon',
+  }
+  return dungeon;
 }
+
+function battle(enemy){
+  if (player.hp <= 0 ) {
+    gameOver();
+    clearInterval(playerAttackInt);
+    return;
+  }
+  if (board[player.position.row][player.position.column] !== board[enemy.position.row][enemy.position.column]){
+    clearInterval(playerAttackInt);
+    return;
+  }
+    enemy.hp = Math.max(0, enemy.hp - player.attack);
+// Battle Victory
+    if (enemy.hp <= 0) {
+      clearInterval(playerAttackInt);
+      print('Way to go! You defeated ' + enemy.name + '!' + '\n' + 'You gained ' + (enemy.level * 10) + ' exp! \nYou\'ve recieved the following items:');
+      print(enemy.items);
+      player.items = player.items.concat(enemy.items);
+      enemy.getExp();
+      if (player.exp >= (player.level * 20)){
+        player.levelUp();
+      }
+      return;
+    }
+    print(enemy.name + ' hit!' + ' -' + player.attack + ' hp', 'purple');
+    print(enemy.name + ' HP remaining: ' + enemy.hp, 'purple');
+}
+
+function enemyAttack(enemy){
+  if (enemy.hp <= 0) {
+    clearInterval(enemyAttackInt);
+    board[enemy.position.row][enemy.position.column] = grass;
+    return;
+  }
+
+  if (board[player.position.row][player.position.column] !== board[enemy.position.row][enemy.position.column]){
+    clearInterval(enemyAttackInt);
+    print('You ran away.')
+    return;
+  }
+
+  if (player.hp > 0) {
+    player.hp = Math.max(0, player.hp - enemy.attack);
+    print(enemy.name + ' hit you for ' + enemy.attack + ' hp', 'red');
+    print('Player HP remaining: ' + player.hp, 'red');
+  }
+
+  if (player.hp <= 0) {
+    clearInterval(enemyAttackInt);
+    return;
+  }
+}
+
+function buy(itemIdx){
+  if (board[player.position.row][player.position.column] === board[tradesman.position.row][tradesman.position.column]){
+    if (tradesman.items[itemIdx] !== undefined) {
+      if (player.gold >= tradesman.items[itemIdx].value){
+        player.items.push(tradesman.items[itemIdx]);
+        player.gold -= tradesman.items[itemIdx].value;
+        print('*CHA-CHING* \nPurchased: ' + tradesman.items[itemIdx].name + '\nYour total was: ' + tradesman.items[itemIdx].value + ' gold. \nThank you for shopping at Walmart! Please don\'t forget your receipt.');
+        print('You have ' + player.gold + ' gold remaining.');
+        tradesman.items.splice(tradesman.items[itemIdx], 1);
+      }
+      else {
+        print('You don\'t have enough gold! \nRequired: ' + tradesman.items[itemIdx].value + ' gold: ' + player.gold);
+      } 
+    } 
+    else {
+      print('Sorry, we\'re fresh out of that one.');
+    }
+  
+  } else {
+    print('You need to go to Walmart to buy items.');
+  }
+}
+
+function sell(itemIdx){
+  if (board[player.position.row][player.position.column] === board[tradesman.position.row][tradesman.position.column]){
+    if (player.items[itemIdx] !== undefined) {
+      tradesman.items.push(player.items[itemIdx]);
+      player.gold += player.items[itemIdx].value;
+      print('*CHA-CHING* You sold your ' + player.items[itemIdx].name + ' for ' + player.items[itemIdx].value + ' gold. Thank you for shopping at Walmart! Please don\'t forget your receipt.');
+      print('You now have ' + player.gold + ' gold.');
+      player.items.splice(player.items[itemIdx], 1);
+    }
+    else {
+    return print('You don\'t have any of those to sell.');
+    }
+  } else {
+    print('You need to go to Walmart to sell items.');
+  }
+}
+
 // Moves the player in the specified direction
 // You will need to handle encounters with other entities e.g. fight with monster
 function move(direction) {
+
+  let monster = {};
+
   if (direction === 'U') {
     if (player.position.row > 1){
-      board[player.position.row].splice(player.position.column, 1, grass);
       player.position.row -= 1;
-      updateBoard(player);
+      currentObj = board[player.position.row][player.position.column];
       printBoard();
+      if (currentObj.type === 'monster') {
+        let monster = currentObj;
+        console.log('You encountered a(n) ' + currentObj.name + '!');
+        playerAttackInt = setInterval(() => battle(monster), player.speed);
+        enemyAttackInt = setInterval(() => enemyAttack(monster), monster.speed);
+      }
+      if (currentObj.type === 'potion'){
+        print('You found a '+ items[0].name + '!', 'green');
+        player.items.push(items[0]);
+        grass.position = player.position;
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'bomb'){
+        print('You found a '+ items[1].name + '!', 'green');
+        player.items.push(items[1]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'key'){
+        print('You found a '+ items[2].name + '!', 'green');
+        player.items.push(items[2]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'tradesman'){
+        print('You decided to go to Walmart! You can buy(itemIdx) and sell(itemIdx) here.');
+        print('Items for sale:');
+        print(tradesman.items);
+      }
+      if (currentObj.type === 'dungeon'){
+        if (currentObj.isLocked === true){
+          print("It's locked. You need to find a key! \n If you have a key, try useItem('Epic key')");
+        }
+        else {
+          print('You found the dungeon!');
+          print('...and it\'s unlocked!');
+          print('No princess here... but hey, you found treasure! That\'s almost as good!');
+          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
+          print(dungeon.items);
+          player.items = player.items.concat(dungeon.items);
+          dungeon.items = [];
+          player.gold += dungeon.gold;
+          dungeon.gold = 0;
+          print('You now have ' + player.gold + ' gold.');
+        }
+      }
     }
     else {
-      console.log("*THUMP* Ow! Watch where you're going!");
+      console.log('*THUMP* Ow! Watch where you\'re going!');
       printBoard();
     }
   }
+
   if (direction === 'D') {
-    if (player.position.row > board.length - 2){
-      board[player.position.row].splice(player.position.column, 1, grass);
+    if (board[player.position.row + 1][player.position.column].sprite !== '#') {
       player.position.row += 1;
-      updateBoard(player);
+      currentObj = board[player.position.row][player.position.column];
       printBoard();
+      if (currentObj.type === 'monster') {
+        let monster = currentObj;
+        console.log('You encountered a(n) ' + currentObj.name + '!');
+        playerAttackInt = setInterval(() => battle(monster), player.speed);
+        enemyAttackInt = setInterval(() => enemyAttack(monster), monster.speed);
+      }
+      if (currentObj.type === 'potion'){
+        print('You found a '+ items[0].name + '!', 'green');
+        player.items.push(items[0]);
+        grass.position = player.position;
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'bomb'){
+        print('You found a '+ items[1].name + '!', 'green');
+        player.items.push(items[1]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'key'){
+        print('You found a '+ items[2].name + '!', 'green');
+        player.items.push(items[2]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'tradesman'){
+        print('You decided to go to Walmart! You can buy(itemIdx) and sell(itemIdx) here.');
+        print('Items for sale:');
+        print(tradesman.items);
+      }
+      if (currentObj.type === 'dungeon'){
+        if (currentObj.isLocked === true){
+          print("It's locked. You need to find a key! \n If you have a key, try useItem('Epic key')");
+        }
+        else {
+          print('You found the dungeon!');
+          print('...and it\'s unlocked!');
+          print('No princess here... but hey, you found treasure! That\'s almost as good!');
+          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
+          print(dungeon.items);
+          player.items = player.items.concat(dungeon.items);
+          dungeon.items = [];
+          player.gold += dungeon.gold;
+          dungeon.gold = 0;
+          print('You now have ' + player.gold + ' gold.');
+        }
+      }
     }
     else {
-      console.log("*THUMP* Ow... My face.");
+      console.log('*THUMP* Ow... My face.');
       printBoard();
     }
   }
   if (direction === 'L') {
-    if (player.position.column > board[0].length - 2){
-      board[player.position.row].splice(player.position.column, 1, grass);
+    if (player.position.column >= 2){
       player.position.column -= 1;
-      updateBoard(player);
+      currentObj = board[player.position.row][player.position.column];
       printBoard();
+      if (currentObj.type === 'monster') {
+        let monster = currentObj;
+        console.log('You encountered a(n) ' + currentObj.name + '!');
+        playerAttackInt = setInterval(() => battle(monster), player.speed);
+        enemyAttackInt = setInterval(() => enemyAttack(monster), monster.speed);
+      }
+      if (currentObj.type === 'potion'){
+        print('You found a '+ items[0].name + '!', 'green');
+        player.items.push(items[0]);
+        grass.position = player.position;
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'bomb'){
+        print('You found a '+ items[1].name + '!', 'green');
+        player.items.push(items[1]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'key'){
+        print('You found a '+ items[2].name + '!', 'green');
+        player.items.push(items[2]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'tradesman'){
+        print('You decided to go to Walmart! You can buy(itemIdx) and sell(itemIdx) here.');
+        print('Items for sale:');
+        print(tradesman.items);
+      }
+      if (currentObj.type === 'dungeon'){
+        if (currentObj.isLocked === true){
+          print("It's locked. You need to find a key! \n If you have a key, try useItem('Epic key')");
+        }
+        else {
+          print('You found the dungeon!');
+          print('...and it\'s unlocked!');
+          print('No princess here... but hey, you found treasure! That\'s almost as good!');
+          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
+          print(dungeon.items);
+          player.items = player.items.concat(dungeon.items);
+          dungeon.items = [];
+          player.gold += dungeon.gold;
+          dungeon.gold = 0;
+          print('You now have ' + player.gold + ' gold.');
+        }
+      }
     }
     else {
-      console.log("*THUMP* Ow... I can't walk through this.");
+      console.log('*THUMP* Ow... I can\'t walk through this.');
       printBoard();
     }
   }
   if (direction === 'R') {
-    if (player.position.column > 1) {
-      board[player.position.row].splice(player.position.column, 1, grass);
+    if (board[player.position.row][player.position.column + 1].sprite !== '#') {
       player.position.column += 1;
-      updateBoard(player);
+      currentObj = board[player.position.row][player.position.column];
       printBoard();
+      if (currentObj.type === 'monster') {
+        let monster = currentObj;
+        console.log('You encountered a(n) ' + currentObj.name + '!');
+        playerAttackInt = setInterval(() => battle(monster), player.speed);
+        enemyAttackInt = setInterval(() => enemyAttack(monster), monster.speed);
+      }
+      if (currentObj.type === 'potion'){
+        print('You found a '+ items[0].name + '!', 'green');
+        player.items.push(items[0]);
+        grass.position = player.position;
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'bomb'){
+        print('You found a '+ items[1].name + '!', 'green');
+        player.items.push(items[1]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'key'){
+        print('You found a '+ items[2].name + '!', 'green');
+        player.items.push(items[2]);
+        board[player.position.row][player.position.column] = grass;
+      }
+      if (currentObj.type === 'tradesman'){
+        print('You decided to go to Walmart! You can buy(itemIdx) and sell(itemIdx) here.');
+        print('Items for sale:');
+        print(tradesman.items);
+      }
+      if (currentObj.type === 'dungeon'){
+        if (currentObj.isLocked === true){
+          print("It's locked. You need to find a key! \n If you have a key, try useItem('Epic key')");
+        }
+        else {
+          print('You found the dungeon!');
+          print('...and it\'s unlocked!');
+          print('No princess here... but hey, you found treasure! That\'s almost as good!');
+          print('You\'ve received ' + dungeon.items.length + ' item(s) and ' + dungeon.gold + ' gold.');
+          print(dungeon.items);
+          player.items = player.items.concat(dungeon.items);
+          dungeon.items = [];
+          player.gold += dungeon.gold;
+          dungeon.gold = 0;
+          print('You now have ' + player.gold + ' gold.');
+        }
+      }
     }
     else {
-      console.log("*THUMP* Ow... I can't walk through this.");
+      console.log('*THUMP* Ow... I can\'t walk through this.');
       printBoard();
     }
   }
@@ -368,7 +804,18 @@ function move(direction) {
 
 
 
-
+function skipSetup() {
+initBoard(7,15);
+createPlayer('Boy', 1, items[0]);
+let monster1 = createMonster(1, items[0], {row: 2, column: 7});
+updateBoard(monster1);
+let monster2 = createMonster(1, [items[0], items[1]], {row:2, column: 6});
+updateBoard(monster2);
+updateBoard(createTradesman(items, {row: 4, column: 7} ));
+updateBoard(createItem(items[0], {row:2, column: 2}));
+updateBoard(createDungeon({row: 2, column: 3}, isLocked = true, hasPrincess = true));
+printBoard();
+}
 
 
 
